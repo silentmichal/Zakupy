@@ -7,21 +7,22 @@ const pathname = 'zakupy/lista-v1.json';
 const sessionMaxAge = 30 * 24 * 60 * 60;
 const cookieName = 'zakupy_session';
 const digest = (text) => createHash('sha256').update(text).digest();
-const sign = (text) => createHmac('sha256', process.env.SESSION_SECRET).update(text).digest('base64url');
+const sign = (text, passwordHash) => createHmac('sha256', process.env.SESSION_SECRET)
+  .update(passwordHash).update(text).digest('base64url');
 
-function sessionProfile(request) {
+function sessionProfile(request, passwordHash) {
   const token = request.headers.get('cookie')?.match(/(?:^|;\s*)zakupy_session=([^;]+)/)?.[1] ?? '';
   const [profile, expiry, signature] = token.split('.');
   if (!profiles.has(profile) || !/^\d+$/.test(expiry) || Number(expiry) <= Date.now() || !signature) return null;
-  const expected = Buffer.from(sign(profile + '.' + expiry));
+  const expected = Buffer.from(sign(profile + '.' + expiry, passwordHash));
   const received = Buffer.from(signature);
   return expected.length === received.length && timingSafeEqual(expected, received) ? profile : null;
 }
 
-function sessionCookie(profile) {
+function sessionCookie(profile, passwordHash) {
   const maxAge = profile ? sessionMaxAge : 0;
   const payload = profile + '.' + (Date.now() + maxAge * 1000);
-  const value = profile ? payload + '.' + sign(payload) : '';
+  const value = profile ? payload + '.' + sign(payload, passwordHash) : '';
   const secure = process.env.VERCEL ? '; Secure' : '';
   return cookieName + '=' + value + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=' + maxAge + secure;
 }
@@ -92,12 +93,13 @@ function itemChange(input, profile) {
 
 export default {
   async fetch(request) {
-    const passwordHash = process.env.HOUSEHOLD_PASSWORD_SHA256 ?? '';
-    if (!/^[a-f0-9]{64}$/i.test(passwordHash) || (process.env.SESSION_SECRET?.length ?? 0) < 32) {
+    const password = process.env.app_password;
+    if (!password || (process.env.SESSION_SECRET?.length ?? 0) < 32) {
       return reject('Logowanie nie jest jeszcze skonfigurowane.', 503);
     }
 
-    const profile = sessionProfile(request);
+    const passwordHash = digest(password);
+    const profile = sessionProfile(request, passwordHash);
     try {
       if (request.method === 'GET') {
         if (!profile) return reject('Zaloguj się, aby otworzyć listę.', 401);
@@ -125,10 +127,10 @@ export default {
 
       if (input.action === 'login') {
         const valid = typeof input.password === 'string' &&
-          timingSafeEqual(digest(input.password), Buffer.from(passwordHash, 'hex'));
+          timingSafeEqual(digest(input.password), passwordHash);
         if (!valid || !profiles.has(input.profile)) return reject('Nieprawidłowe hasło.', 401);
         const { items } = await readList();
-        return reply({ profile: input.profile, items }, 200, { 'Set-Cookie': sessionCookie(input.profile) });
+        return reply({ profile: input.profile, items }, 200, { 'Set-Cookie': sessionCookie(input.profile, passwordHash) });
       }
       if (input.action === 'logout') return reply({}, 200, { 'Set-Cookie': sessionCookie(null) });
       if (!profile) return reject('Zaloguj się ponownie.', 401);
