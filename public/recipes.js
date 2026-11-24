@@ -9,6 +9,7 @@ const recipes = [
   { id: 'r90518', name: 'Krem marchewkowo-imbirowy z soczewicą', ingredients: [/\bmarchew\w*\b/, /\bimbir\w*\b/, /\bsoczewic\w*\b/] },
   { id: 'r913453', name: 'Spaghetti Bolognese', ingredients: [/\b(?:spaghetti|makaron)\w*\b/, /\bmies[oa] mielon\w*\b/] },
   { id: 'r55309', name: 'Makaron w sosie pomidorowym', ingredients: [/\bmakaron\w*\b/, /\bsos pomidorowy\b/, /\bchorizo\b/, /\bpieczark\w*\b/] },
+  { id: 'r323228', name: 'Koktajl owocowy z sokiem pomarańczowym', ingredients: [/\bpomarancz\w*\b/] },
 ];
 
 function normalized(name) {

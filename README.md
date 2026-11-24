@@ -1,6 +1,6 @@
 # Nasze zakupy
 
-Wspólna lista zakupów Michała i Oli. Wpisz wspólne hasło, a następnie wybierz profil. Produkt możesz wpisać ręcznie lub wybrać z katalogu. Przycisk „Wyczyść całą listę” usuwa pozycje widoczne w chwili kliknięcia, również te odhaczone. Oba profile korzystają z tej samej listy. Aplikacja synchronizuje widok po zapisie, po powrocie do karty i co 12 sekund, gdy karta jest widoczna.
+Wspólna lista zakupów Michała i Oli. Wpisz wspólne hasło, a następnie wybierz profil. W zakładce „Produkty” możesz wybrać produkt z katalogu, wpisać go ręcznie lub zapisać go we wspólnym katalogu. Przycisk „Wyczyść całą listę” usuwa pozycje widoczne w chwili kliknięcia, również te odhaczone. Oba profile korzystają z tej samej listy. Aplikacja synchronizuje widok po zapisie, po powrocie do karty i co 12 sekund, gdy karta jest widoczna.
 
 Po dwóch odhaczeniach tego samego produktu aplikacja może podpowiedzieć go w sekcji „Często kupujecie”. Wyczyszczenie listy zachowuje wspólną historię zakupów. Sekcja „Przepisy z Cookidoo” dopasowuje produkty widoczne na liście do wybranych przepisów i otwiera oficjalną stronę przepisu.
 

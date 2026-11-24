@@ -48,7 +48,7 @@ async function readList() {
       id, name, quantity, checkedAt: null, profile: null,
     })),
   } : null);
-  const state = { ...data, currentRound, pastRounds: data.pastRounds ?? [] };
+  const state = { ...data, currentRound, pastRounds: data.pastRounds ?? [], catalog: data.catalog ?? [] };
   return { state, etag: result?.blob.etag ?? null };
 }
 
@@ -121,7 +121,16 @@ function listData(profile, state) {
     .sort(([, a], [, b]) => b.count - a.count || a.name.localeCompare(b.name, 'pl'))
     .slice(0, 6)
     .map(([, { name, category }]) => ({ name, category }));
-  return { profile, items: state.items, suggestions, startedAt: state.currentRound?.startedAt ?? null };
+  return {
+    profile, items: state.items, suggestions,
+    startedAt: state.currentRound?.startedAt ?? null, catalog: state.catalog,
+  };
+}
+
+function productDetails(input) {
+  const name = typeof input.name === 'string' ? input.name.trim() : '';
+  if (!name || name.length > 100 || !categories.has(input.category)) return null;
+  return { name, category: input.category };
 }
 
 function itemChange(input, profile) {
@@ -139,15 +148,14 @@ function itemChange(input, profile) {
   if (action === 'remove') return (items) => items.filter((item) => item.id !== id);
   if (action !== 'add') return null;
 
-  const name = typeof input.name === 'string' ? input.name.trim() : '';
+  const product = productDetails(input);
   const quantity = typeof input.quantity === 'string' ? input.quantity.trim() : '';
-  const category = input.category;
-  if (!name || name.length > 100 || quantity.length > 32 || !categories.has(category)) return null;
+  if (!product || quantity.length > 32) return null;
 
-  const item = { id, name, quantity, category, profile, done: false };
+  const item = { id, ...product, quantity, profile, done: false };
   return (items) => {
     if (items.some((existing) => existing.id === id)) return items;
-    if (input.suggested === true && items.some((existing) => !existing.done && productKey(existing.name) === productKey(name))) return items;
+    if (input.suggested === true && items.some((existing) => !existing.done && productKey(existing.name) === productKey(item.name))) return items;
     if (items.length >= 300) throw new RangeError('Lista ma już 300 pozycji. Usuń kilka produktów i spróbuj ponownie.');
     return [...items, item];
   };
@@ -210,6 +218,17 @@ export default {
         });
       }
       if (profile === awaitingProfile) return reject('Wybierz profil, aby otworzyć listę.', 403);
+
+      if (input.action === 'save-product') {
+        const product = productDetails(input);
+        if (!product) return reject('Sprawdź nazwę i kategorię produktu.', 400);
+        const key = productKey(product.name);
+        const state = await updateList((current) => {
+          if (current.catalog.some((entry) => productKey(entry.name) === key)) return current;
+          return { ...current, catalog: [...current.catalog, product] };
+        });
+        return reply(listData(profile, state));
+      }
 
       if (input.action === 'check') {
         if (typeof input.id !== 'string' || !itemIdPattern.test(input.id) || typeof input.done !== 'boolean') {

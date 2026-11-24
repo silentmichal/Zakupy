@@ -69,63 +69,74 @@
         </div>
       </div>
 
-      <form id="add-form" class="add-form" aria-label="Dodaj produkt">
-        <label class="catalog-field">Wybierz gotowy produkt
-          <select id="catalog">
-            <option value="">Wybierz z katalogu</option>
-          </select>
-        </label>
-        <label class="product-field">Nazwa produktu
-          <input id="item-name" name="name" type="text" placeholder="np. Mleko" autocomplete="off" maxlength="100" required>
-        </label>
-        <label>Ilość
-          <input id="quantity" name="quantity" type="text" placeholder="np. 2 l" autocomplete="off" maxlength="32">
-        </label>
-        <label>Kategoria
-          <select id="category" name="category">
-            <option value="other">Inne</option>
-            <option value="produce">Warzywa i owoce</option>
-            <option value="dairy">Nabiał i jaja</option>
-            <option value="bakery">Pieczywo</option>
-            <option value="pantry">Spożywcze</option>
-            <option value="home">Do domu</option>
-          </select>
-        </label>
-        <button class="primary" id="add" type="submit"><span aria-hidden="true">+</span> Dodaj</button>
-      </form>
-
-      <section id="frequent" class="suggestions" aria-labelledby="frequent-title" hidden>
-        <h2 id="frequent-title">Często kupujecie</h2>
-        <div id="frequent-products" class="suggestion-options"></div>
-      </section>
+      <div class="shopping-tabs" role="tablist" aria-label="Zakupy">
+        <button id="list-tab" type="button" role="tab" aria-selected="true" aria-controls="list-panel">Lista</button>
+        <button id="products-tab" type="button" role="tab" aria-selected="false" aria-controls="products-panel" tabindex="-1">Produkty</button>
+      </div>
 
       <p id="list-error" class="error" role="alert" hidden></p>
       <p id="announcement" class="sr-only" role="status"></p>
 
-      <div class="section-heading">
-        <h2>Do kupienia <span id="todo-count" class="count"></span></h2>
-        <span id="sync-state" class="sync" role="status"><i></i> Zsynchronizowano</span>
-      </div>
-      <div id="todo"></div>
-
-      <div id="done-section" class="done-section" hidden>
-        <div class="section-heading">
-          <h2>Kupione <span id="done-count" class="count"></span></h2>
-          <button id="clear" class="text-button" type="button">Wyczyść kupione</button>
-        </div>
-        <ul id="done" class="items"></ul>
-      </div>
-      <div id="list-actions" class="list-actions" hidden>
-        <button id="clear-all" class="text-button" type="button">Wyczyść całą listę</button>
-      </div>
-      <section id="recipe-suggestions" class="suggestions" aria-labelledby="recipe-title" hidden>
-        <h2 id="recipe-title">Przepisy z Cookidoo</h2>
-        <ul id="recipe-links" class="recipe-links"></ul>
+      <section id="products-panel" role="tabpanel" aria-labelledby="products-tab" hidden>
+        <form id="add-form" class="add-form" aria-label="Dodaj produkt">
+          <label class="catalog-field">Wybierz gotowy produkt
+            <select id="catalog">
+              <option value="">Wybierz z katalogu</option>
+            </select>
+          </label>
+          <label class="product-field">Nazwa produktu
+            <input id="item-name" name="name" type="text" placeholder="np. Mleko" autocomplete="off" maxlength="100" required>
+          </label>
+          <label>Ilość
+            <input id="quantity" name="quantity" type="text" placeholder="np. 2 l" autocomplete="off" maxlength="32">
+          </label>
+          <label>Kategoria
+            <select id="category" name="category">
+              <option value="other">Inne</option>
+              <option value="produce">Warzywa i owoce</option>
+              <option value="dairy">Nabiał i jaja</option>
+              <option value="bakery">Pieczywo</option>
+              <option value="pantry">Spożywcze</option>
+              <option value="home">Do domu</option>
+            </select>
+          </label>
+          <button class="primary" id="add" type="submit"><span aria-hidden="true">+</span> Dodaj do listy</button>
+          <button class="text-button" id="save-product" type="submit">Zapisz w katalogu</button>
+        </form>
+        <p id="product-feedback" class="product-feedback" hidden></p>
       </section>
-      <details id="history" class="suggestions history">
-        <summary>Historia zakupów</summary>
-        <div id="history-content"></div>
-      </details>
+
+      <section id="list-panel" role="tabpanel" aria-labelledby="list-tab">
+        <section id="frequent" class="suggestions" aria-labelledby="frequent-title" hidden>
+          <h2 id="frequent-title">Często kupujecie</h2>
+          <div id="frequent-products" class="suggestion-options"></div>
+        </section>
+
+        <div class="section-heading">
+          <h2>Do kupienia <span id="todo-count" class="count"></span></h2>
+          <span id="sync-state" class="sync" role="status"><i></i> Zsynchronizowano</span>
+        </div>
+        <div id="todo"></div>
+
+        <div id="done-section" class="done-section" hidden>
+          <div class="section-heading">
+            <h2>Kupione <span id="done-count" class="count"></span></h2>
+            <button id="clear" class="text-button" type="button">Wyczyść kupione</button>
+          </div>
+          <ul id="done" class="items"></ul>
+        </div>
+        <div id="list-actions" class="list-actions" hidden>
+          <button id="clear-all" class="text-button" type="button">Wyczyść całą listę</button>
+        </div>
+        <section id="recipe-suggestions" class="suggestions" aria-labelledby="recipe-title" hidden>
+          <h2 id="recipe-title">Przepisy z Cookidoo</h2>
+          <ul id="recipe-links" class="recipe-links"></ul>
+        </section>
+        <details id="history" class="suggestions history">
+          <summary>Historia zakupów</summary>
+          <div id="history-content"></div>
+        </details>
+      </section>
     </section>
   </main>
 

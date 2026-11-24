@@ -19,22 +19,32 @@ const categories = {
   other: 'Inne',
 };
 const commonProducts = {
-  produce: ['Banany', 'Cebula', 'Cytryny', 'Jabłka', 'Marchew', 'Ogórki', 'Papryka', 'Pomidory', 'Sałata', 'Ziemniaki'],
+  produce: ['Banany', 'Cebula', 'Cytryny', 'Jabłka', 'Marchew', 'Ogórki', 'Papryka', 'Pomarańcze', 'Pomidory', 'Sałata', 'Ziemniaki'],
   dairy: ['Jajka', 'Jogurt', 'Masło', 'Mleko', 'Ser żółty', 'Śmietana', 'Twaróg'],
   bakery: ['Bułki', 'Chleb', 'Chleb tostowy', 'Tortille'],
   pantry: ['Herbata', 'Kawa', 'Kurczak', 'Makaron', 'Mąka', 'Mięso mielone', 'Olej', 'Płatki owsiane', 'Pomidory w puszce', 'Ryż', 'Sól'],
   home: ['Mydło', 'Papier toaletowy', 'Płyn do naczyń', 'Ręczniki papierowe', 'Tabletki do zmywarki', 'Worki na śmieci'],
 };
 
-for (const [category, names] of Object.entries(commonProducts)) {
-  const group = document.createElement('optgroup');
-  group.label = categories[category];
-  for (const name of names) {
+function renderCatalog(customProducts) {
+  const selected = catalog.value;
+  const groups = Object.fromEntries(Object.entries(categories).map(([category, label]) => {
+    const group = document.createElement('optgroup');
+    group.label = label;
+    return [category, group];
+  }));
+  const seen = new Set();
+  const builtIns = Object.entries(commonProducts).flatMap(([category, names]) => names.map((name) => ({ name, category })));
+  for (const { name, category } of [...builtIns, ...customProducts]) {
+    const key = name.toLocaleLowerCase('pl');
+    if (seen.has(key)) continue;
+    seen.add(key);
     const option = new Option(name, name);
     option.dataset.category = category;
-    group.append(option);
+    groups[category].append(option);
   }
-  catalog.append(group);
+  catalog.replaceChildren(new Option('Wybierz z katalogu', ''), ...Object.values(groups).filter((group) => group.children.length));
+  catalog.value = [...catalog.options].some((option) => option.value === selected) ? selected : '';
 }
 
 catalog.addEventListener('change', () => {
@@ -50,11 +60,36 @@ nameInput.addEventListener('input', () => {
 let profile = null;
 let items = [];
 let suggestions = [];
+let customProducts = [];
 let revision = 0;
 let busy = false;
 let refreshing = false;
 let historyRequest = 0;
 const dateTime = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeStyle: 'short' });
+const tabs = [get('list-tab'), get('products-tab')];
+
+function showShoppingTab(chosen) {
+  for (const tab of tabs) {
+    const active = tab === chosen;
+    tab.setAttribute('aria-selected', active);
+    tab.tabIndex = active ? 0 : -1;
+    get(tab.getAttribute('aria-controls')).hidden = !active;
+  }
+}
+
+for (const tab of tabs) {
+  tab.addEventListener('click', () => {
+    showShoppingTab(tab);
+    refreshHistory();
+  });
+  tab.addEventListener('keydown', (event) => {
+    const next = { Home: tabs[0], End: tabs[1], ArrowLeft: tabs[1 - tabs.indexOf(tab)], ArrowRight: tabs[1 - tabs.indexOf(tab)] }[event.key];
+    if (!next) return;
+    event.preventDefault();
+    next.click();
+    next.focus();
+  });
+}
 
 async function request(action = null, query = '') {
   const response = await fetch('/api/zakupy' + query, action && {
@@ -89,6 +124,8 @@ function showLogin(message = '', chooseProfile = false) {
   profile = null;
   items = [];
   suggestions = [];
+  customProducts = [];
+  get('product-feedback').hidden = true;
   historyRequest += 1;
   history.open = false;
   get('history-content').replaceChildren();
@@ -107,6 +144,7 @@ function showLogin(message = '', chooseProfile = false) {
 function showList(data) {
   const firstView = !profile;
   profile = data.profile;
+  if (firstView) showShoppingTab(tabs[0]);
   get('loading').hidden = true;
   get('login').hidden = true;
   get('account').hidden = false;
@@ -127,6 +165,11 @@ function showList(data) {
   if (firstView || JSON.stringify(suggestions) !== JSON.stringify(nextSuggestions)) {
     suggestions = nextSuggestions;
     renderSuggestions();
+  }
+  const nextCatalog = data.catalog ?? [];
+  if (firstView || JSON.stringify(customProducts) !== JSON.stringify(nextCatalog)) {
+    customProducts = nextCatalog;
+    renderCatalog(customProducts);
   }
 }
 
@@ -177,7 +220,7 @@ function renderHistory(rounds) {
 }
 
 async function refreshHistory() {
-  if (!history.open || !profile) return;
+  if (!history.open || !profile || get('list-panel').hidden) return;
   const version = ++historyRequest;
   const content = get('history-content');
   if (!content.textContent) content.textContent = 'Otwieram historię…';
@@ -227,7 +270,7 @@ function renderSuggestions() {
     list.append(button);
   }
   get('frequent').hidden = suggestions.length === 0;
-  if (hadFocus) nameInput.focus({ preventScroll: true });
+  if (hadFocus) get('products-tab').focus({ preventScroll: true });
 }
 
 function renderItem(item) {
@@ -282,7 +325,7 @@ function renderList() {
   if (!pending.length) {
     const empty = document.createElement('p');
     empty.className = 'empty';
-    empty.textContent = items.length ? 'Wszystko kupione.' : 'Dodaj pierwszy produkt do wspólnej listy.';
+    empty.textContent = items.length ? 'Wszystko kupione.' : 'Dodaj pierwszy produkt w zakładce Produkty.';
     todo.append(empty);
   }
 
@@ -300,7 +343,7 @@ function renderList() {
 
   if (focusedRow) {
     const sameRow = [...document.querySelectorAll('.item')].find((row) => row.dataset.id === focusedRow.dataset.id);
-    (sameRow?.querySelector(focusedClass) ?? get('item-name')).focus({ preventScroll: true });
+    (sameRow?.querySelector(focusedClass) ?? get('products-tab')).focus({ preventScroll: true });
   }
 }
 
@@ -333,6 +376,7 @@ async function change(action, announcement) {
   busy = true;
   revision += 1;
   get('add').disabled = true;
+  get('save-product').disabled = true;
   get('shopping').setAttribute('aria-busy', 'true');
   setSync('saving');
   errorAt('list-error');
@@ -351,6 +395,7 @@ async function change(action, announcement) {
   } finally {
     busy = false;
     get('add').disabled = false;
+    get('save-product').disabled = false;
     get('shopping').setAttribute('aria-busy', 'false');
   }
 }
@@ -433,16 +478,27 @@ addForm.addEventListener('submit', async (event) => {
     get('item-name').focus();
     return;
   }
+  const saving = event.submitter?.id === 'save-product';
+  const feedback = get('product-feedback');
+  feedback.hidden = true;
+  if (saving && [...catalog.options].some((option) => option.value.toLocaleLowerCase('pl') === name.toLocaleLowerCase('pl'))) {
+    feedback.textContent = 'Ten produkt jest już w katalogu.';
+    feedback.hidden = false;
+    return;
+  }
   const action = {
-    action: 'add', id: crypto.randomUUID(), name,
+    action: saving ? 'save-product' : 'add', id: crypto.randomUUID(), name,
     quantity: data.get('quantity'), category: data.get('category'),
   };
-  if (await change(action, 'Produkt dodany.')) {
+  const message = saving ? 'Zapisano w katalogu: ' + name : 'Dodano do listy: ' + name;
+  if (await change(action, message)) {
+    feedback.textContent = message;
+    feedback.hidden = false;
     if (nameInput.value === data.get('name')) {
       nameInput.value = '';
       catalog.value = '';
     }
-    if (get('quantity').value === action.quantity) get('quantity').value = '';
+    if (!saving && get('quantity').value === action.quantity) get('quantity').value = '';
     get('item-name').focus();
   }
 });
@@ -455,7 +511,7 @@ get('clear').addEventListener('click', () => {
 get('clear-all').addEventListener('click', async () => {
   const ids = items.map((item) => item.id);
   if (await change({ action: 'clear-all', ids }, 'Lista wyczyszczona.')) {
-    nameInput.focus({ preventScroll: true });
+    get('products-tab').focus({ preventScroll: true });
   }
 });
 
