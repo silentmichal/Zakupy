@@ -7,6 +7,7 @@ const categories = new Set(['produce', 'dairy', 'bakery', 'pantry', 'home', 'oth
 const pathname = 'zakupy/lista-v1.json';
 const sessionMaxAge = 30 * 24 * 60 * 60;
 const cookieName = 'zakupy_session';
+const itemIdPattern = /^[a-f0-9-]{36}$/i;
 const digest = (text) => createHash('sha256').update(text).digest();
 const sign = (text, passwordHash) => createHmac('sha256', process.env.SESSION_SECRET)
   .update(passwordHash).update(text).digest('base64url');
@@ -39,15 +40,23 @@ function reject(message, status) {
 
 async function readList() {
   const result = await get(pathname, { access: 'private', useCache: false });
-  if (!result) return { items: [], etag: null };
-  return { items: await new Response(result.stream).json(), etag: result.blob.etag };
+  const saved = result ? await new Response(result.stream).json() : [];
+  const data = Array.isArray(saved) ? { items: saved, purchases: {} } : saved;
+  const currentRound = data.currentRound ?? (data.items.length ? {
+    startedAt: null,
+    bought: data.items.filter((item) => item.done).map(({ id, name, quantity }) => ({
+      id, name, quantity, checkedAt: null, profile: null,
+    })),
+  } : null);
+  const state = { ...data, currentRound, pastRounds: data.pastRounds ?? [] };
+  return { state, etag: result?.blob.etag ?? null };
 }
 
 async function updateList(change) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const { items, etag } = await readList();
-    const next = change(items);
-    if (next === items) return items;
+    const { state, etag } = await readList();
+    const next = change(state);
+    if (next === state) return state;
 
     try {
       await put(pathname, JSON.stringify(next), {
@@ -65,6 +74,56 @@ async function updateList(change) {
   throw new Error('Concurrent changes prevented the update');
 }
 
+function productKey(name) {
+  return name.trim().replace(/\s+/g, ' ').normalize('NFC').toLocaleLowerCase('pl');
+}
+
+function setPurchased(state, id, done, profile) {
+  const item = state.items.find((entry) => entry.id === id);
+  if (!item || item.done === done) return state;
+
+  const purchases = Object.assign(Object.create(null), state.purchases);
+  const key = productKey(item.name);
+  if (done) {
+    purchases[key] = { name: item.name, category: item.category, count: (purchases[key]?.count ?? 0) + 1 };
+  } else if (item.purchaseRecorded && purchases[key]) {
+    const count = purchases[key].count - 1;
+    if (count === 0) delete purchases[key];
+    else purchases[key] = { ...purchases[key], count };
+  }
+
+  const items = state.items.map((entry) => entry.id === id ? { ...entry, done, purchaseRecorded: done } : entry);
+  const { currentRound } = state;
+  const bought = done
+    ? [...currentRound.bought, { id, name: item.name, quantity: item.quantity, checkedAt: new Date().toISOString(), profile }]
+    : currentRound.bought.filter((entry) => entry.id !== id);
+  return { ...state, items, purchases, currentRound: { ...currentRound, bought } };
+}
+
+function applyListChange(state, change) {
+  const items = change(state.items);
+  if (items === state.items) return state;
+  const { currentRound, pastRounds } = state;
+  if (items.length && !state.items.length) {
+    return { ...state, items, currentRound: { startedAt: new Date().toISOString(), bought: [] } };
+  }
+  if (!items.length && currentRound) {
+    const round = { ...currentRound, closedAt: new Date().toISOString() };
+    return { ...state, items, currentRound: null, pastRounds: [...pastRounds, round] };
+  }
+  return { ...state, items };
+}
+
+function listData(profile, state) {
+  const pending = new Set(state.items.filter((item) => !item.done).map((item) => productKey(item.name)));
+  const suggestions = Object.entries(state.purchases)
+    .filter(([key, product]) => product.count >= 2 && !pending.has(key))
+    .sort(([, a], [, b]) => b.count - a.count || a.name.localeCompare(b.name, 'pl'))
+    .slice(0, 6)
+    .map(([, { name, category }]) => ({ name, category }));
+  return { profile, items: state.items, suggestions, startedAt: state.currentRound?.startedAt ?? null };
+}
+
 function itemChange(input, profile) {
   const { action, id } = input;
   if (action === 'clear' || action === 'clear-all') {
@@ -76,11 +135,8 @@ function itemChange(input, profile) {
     };
   }
 
-  if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id)) return null;
+  if (typeof id !== 'string' || !itemIdPattern.test(id)) return null;
   if (action === 'remove') return (items) => items.filter((item) => item.id !== id);
-  if (action === 'check' && typeof input.done === 'boolean') {
-    return (items) => items.map((item) => item.id === id ? { ...item, done: input.done } : item);
-  }
   if (action !== 'add') return null;
 
   const name = typeof input.name === 'string' ? input.name.trim() : '';
@@ -91,6 +147,7 @@ function itemChange(input, profile) {
   const item = { id, name, quantity, category, profile, done: false };
   return (items) => {
     if (items.some((existing) => existing.id === id)) return items;
+    if (input.suggested === true && items.some((existing) => !existing.done && productKey(existing.name) === productKey(name))) return items;
     if (items.length >= 300) throw new RangeError('Lista ma już 300 pozycji. Usuń kilka produktów i spróbuj ponownie.');
     return [...items, item];
   };
@@ -109,7 +166,13 @@ export default {
       if (request.method === 'GET') {
         if (!profile) return reject('Zaloguj się, aby otworzyć listę.', 401);
         if (profile === awaitingProfile) return reply({ profile: null });
-        return reply({ profile, items: (await readList()).items });
+        const { state } = await readList();
+        if (new URL(request.url).searchParams.has('history')) {
+          const rounds = state.pastRounds.slice().reverse();
+          if (state.currentRound?.bought.length) rounds.unshift(state.currentRound);
+          return reply({ rounds });
+        }
+        return reply(listData(profile, state));
       }
       if (request.method !== 'POST') return reject('Ta metoda jest niedostępna.', 405);
       const host = request.headers.get('host') ?? new URL(request.url).host;
@@ -141,16 +204,24 @@ export default {
       if (!profile) return reject('Zaloguj się ponownie.', 401);
       if (input.action === 'select-profile') {
         if (!profiles.has(input.profile)) return reject('Wybierz Michała lub Olę.', 400);
-        const { items } = await readList();
-        return reply({ profile: input.profile, items }, 200, {
+        const { state } = await readList();
+        return reply(listData(input.profile, state), 200, {
           'Set-Cookie': sessionCookie(input.profile, passwordHash),
         });
       }
       if (profile === awaitingProfile) return reject('Wybierz profil, aby otworzyć listę.', 403);
 
+      if (input.action === 'check') {
+        if (typeof input.id !== 'string' || !itemIdPattern.test(input.id) || typeof input.done !== 'boolean') {
+          return reject('Sprawdź dane produktu i spróbuj ponownie.', 400);
+        }
+        const state = await updateList((current) => setPurchased(current, input.id, input.done, profile));
+        return reply(listData(profile, state));
+      }
       const change = itemChange(input, profile);
       if (!change) return reject('Sprawdź dane produktu i spróbuj ponownie.', 400);
-      return reply({ profile, items: await updateList(change) });
+      const state = await updateList((current) => applyListChange(current, change));
+      return reply(listData(profile, state));
     } catch (error) {
       if (error instanceof RangeError) return reject(error.message, 400);
       console.error('Shopping list request failed', error.name);

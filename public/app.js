@@ -1,8 +1,11 @@
+import { suggestRecipes } from './recipes.js';
+
 const get = (id) => document.getElementById(id);
 const loginForm = get('login-form');
 const addForm = get('add-form');
 const catalog = get('catalog');
 const nameInput = get('item-name');
+const history = get('history');
 const password = get('password');
 const showPassword = get('show-password');
 
@@ -46,12 +49,15 @@ nameInput.addEventListener('input', () => {
 
 let profile = null;
 let items = [];
+let suggestions = [];
 let revision = 0;
 let busy = false;
 let refreshing = false;
+let historyRequest = 0;
+const dateTime = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium', timeStyle: 'short' });
 
-async function request(action = null) {
-  const response = await fetch('/api/zakupy', action && {
+async function request(action = null, query = '') {
+  const response = await fetch('/api/zakupy' + query, action && {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(action),
@@ -82,6 +88,10 @@ function useAvatar(element, id) {
 function showLogin(message = '', chooseProfile = false) {
   profile = null;
   items = [];
+  suggestions = [];
+  historyRequest += 1;
+  history.open = false;
+  get('history-content').replaceChildren();
   get('loading').hidden = true;
   get('account').hidden = true;
   get('shopping').hidden = true;
@@ -103,10 +113,121 @@ function showList(data) {
   get('shopping').hidden = false;
   get('account-name').textContent = profiles[profile];
   useAvatar(get('account-avatar'), profile);
+  const listDate = get('list-date');
+  listDate.hidden = data.items.length === 0;
+  listDate.textContent = data.startedAt
+    ? 'Utworzona ' + dateTime.format(new Date(data.startedAt))
+    : 'Data utworzenia niedostępna';
   if (firstView || JSON.stringify(items) !== JSON.stringify(data.items)) {
     items = data.items;
     renderList();
+    renderRecipes();
   }
+  const nextSuggestions = data.suggestions ?? [];
+  if (firstView || JSON.stringify(suggestions) !== JSON.stringify(nextSuggestions)) {
+    suggestions = nextSuggestions;
+    renderSuggestions();
+  }
+}
+
+function renderHistory(rounds) {
+  const content = get('history-content');
+  if (!rounds.length) {
+    content.textContent = 'Historia pojawi się po odhaczeniu pierwszego produktu.';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const round of rounds) {
+    const section = document.createElement('section');
+    section.className = 'history-round';
+    const heading = document.createElement('h3');
+    heading.textContent = round.closedAt
+      ? 'Lista zakończona ' + dateTime.format(new Date(round.closedAt))
+      : 'Bieżąca lista';
+    const created = document.createElement('p');
+    created.textContent = round.startedAt
+      ? 'Utworzona ' + dateTime.format(new Date(round.startedAt))
+      : 'Data utworzenia niedostępna';
+    section.append(heading, created);
+    if (round.bought.length) {
+      const list = document.createElement('ul');
+      for (const { name, quantity, checkedAt, profile: buyer } of round.bought) {
+        const item = document.createElement('li');
+        item.textContent = quantity ? name + ' · ' + quantity : name;
+        const timestamp = document.createElement('time');
+        if (checkedAt) {
+          timestamp.dateTime = checkedAt;
+          timestamp.textContent = ' · ' + profiles[buyer] + ', ' + dateTime.format(new Date(checkedAt));
+        } else {
+          timestamp.textContent = ' · data zakupu niedostępna';
+        }
+        item.append(timestamp);
+        list.append(item);
+      }
+      section.append(list);
+    } else {
+      const empty = document.createElement('p');
+      empty.textContent = 'Brak odhaczonych zakupów.';
+      section.append(empty);
+    }
+    fragment.append(section);
+  }
+  content.replaceChildren(fragment);
+}
+
+async function refreshHistory() {
+  if (!history.open || !profile) return;
+  const version = ++historyRequest;
+  const content = get('history-content');
+  if (!content.textContent) content.textContent = 'Otwieram historię…';
+  try {
+    const { rounds } = await request(null, '?history=1');
+    if (history.open && version === historyRequest && rounds) renderHistory(rounds);
+  } catch {
+    if (history.open && version === historyRequest) content.textContent = 'Nie udało się otworzyć historii. Spróbuj ponownie.';
+  }
+}
+
+history.addEventListener('toggle', refreshHistory);
+
+function renderRecipes() {
+  const panel = get('recipe-suggestions');
+  const list = get('recipe-links');
+  const recipes = suggestRecipes(items);
+  list.replaceChildren();
+  for (const { name, url, matched } of recipes) {
+    const item = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = name;
+    const ingredients = document.createElement('span');
+    ingredients.textContent = 'Na liście: ' + matched.join(', ');
+    item.append(link, ingredients);
+    list.append(item);
+  }
+  panel.hidden = recipes.length === 0;
+}
+
+function renderSuggestions() {
+  const list = get('frequent-products');
+  const hadFocus = list.contains(document.activeElement);
+  list.replaceChildren();
+  for (const { name, category } of suggestions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'text-button';
+    button.textContent = '+ ' + name;
+    button.setAttribute('aria-label', 'Dodaj: ' + name);
+    button.addEventListener('click', () => {
+      change({ action: 'add', id: crypto.randomUUID(), name, category, quantity: '', suggested: true }, 'Produkt dodany.');
+    });
+    list.append(button);
+  }
+  get('frequent').hidden = suggestions.length === 0;
+  if (hadFocus) nameInput.focus({ preventScroll: true });
 }
 
 function renderItem(item) {
@@ -193,6 +314,7 @@ async function refresh() {
     if (data.profile) {
       showList(data);
       setSync('saved');
+      refreshHistory();
     } else {
       showLogin('', true);
     }
@@ -218,6 +340,7 @@ async function change(action, announcement) {
     const data = await request(action);
     showList(data);
     setSync('saved');
+    refreshHistory();
     get('announcement').textContent = announcement;
     return true;
   } catch (error) {

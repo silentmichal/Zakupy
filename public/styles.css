@@ -92,6 +92,22 @@ progress::-moz-progress-bar { background: var(--orange); border-radius: 999px; }
 .add-form { display: grid; grid-template-columns: minmax(170px, 2fr) minmax(88px, .7fr) minmax(150px, 1fr) auto; align-items: end; gap: 12px; padding: 20px; border: 1px solid var(--stone); border-radius: 12px; background: var(--paper); box-shadow: var(--shadow); }
 .add-form input, .add-form select { display: block; margin-top: 5px; }
 .catalog-field { grid-column: 1 / -1; }
+.suggestions { margin-top: 22px; padding: 16px 19px; border: 1px solid var(--stone); border-radius: 12px; background: var(--paper); }
+.suggestions h2 { margin-bottom: 9px; font-size: 1.55rem; }
+.suggestion-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggestion-options .text-button { border-color: var(--stone); }
+.recipe-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); list-style: none; gap: 9px; margin: 0; padding: 0; }
+.recipe-links li { padding: 9px 12px; border: 1px solid var(--stone); border-radius: 8px; overflow-wrap: anywhere; }
+.recipe-links a { display: block; color: var(--ink); font-weight: 620; text-decoration-color: #a3431f; text-underline-offset: 3px; }
+.recipe-links span { display: block; margin-top: 3px; color: var(--muted); font-size: .85rem; }
+.summary .list-date { margin-top: 6px; font-size: .88rem; }
+.history summary { cursor: pointer; font: 400 1.55rem/1.25 var(--display); letter-spacing: -.045em; }
+#history-content:not(:empty) { margin-top: 12px; }
+.history-round { padding: 10px 0; }
+.history-round + .history-round { border-top: 1px solid var(--stone); }
+.history-round h3 { font-size: 1rem; font-weight: 620; }
+.history-round p, .history-round time { color: var(--muted); font-size: .88rem; }
+.history-round ul { padding-left: 20px; margin: 6px 0 0; }
 .list-actions { display: flex; justify-content: flex-end; padding-top: 18px; }
 .list-actions .text-button { color: #812e10; border-color: #d3b1a0; }
 .section-heading { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin: 34px 0 13px; }

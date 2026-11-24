@@ -61,6 +61,7 @@
         <div>
           <h1 id="shopping-title" tabindex="-1">Lista zakupów<span>.</span></h1>
           <p id="summary-copy"></p>
+          <p id="list-date" class="list-date" hidden></p>
         </div>
         <div class="progress" aria-label="Postęp zakupów">
           <span id="progress-copy"></span>
@@ -93,6 +94,11 @@
         <button class="primary" id="add" type="submit"><span aria-hidden="true">+</span> Dodaj</button>
       </form>
 
+      <section id="frequent" class="suggestions" aria-labelledby="frequent-title" hidden>
+        <h2 id="frequent-title">Często kupujecie</h2>
+        <div id="frequent-products" class="suggestion-options"></div>
+      </section>
+
       <p id="list-error" class="error" role="alert" hidden></p>
       <p id="announcement" class="sr-only" role="status"></p>
 
@@ -112,6 +118,14 @@
       <div id="list-actions" class="list-actions" hidden>
         <button id="clear-all" class="text-button" type="button">Wyczyść całą listę</button>
       </div>
+      <section id="recipe-suggestions" class="suggestions" aria-labelledby="recipe-title" hidden>
+        <h2 id="recipe-title">Przepisy z Cookidoo</h2>
+        <ul id="recipe-links" class="recipe-links"></ul>
+      </section>
+      <details id="history" class="suggestions history">
+        <summary>Historia zakupów</summary>
+        <div id="history-content"></div>
+      </details>
     </section>
   </main>
 
