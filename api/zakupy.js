@@ -1,7 +1,8 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { BlobError, BlobPreconditionFailedError, get, put } from '@vercel/blob';
 
-const profiles = new Set(['michal', 'ola']);
+const defaultProfileNames = { michal: 'Michał', ola: 'Ola' };
+const profiles = new Set(Object.keys(defaultProfileNames));
 const awaitingProfile = 'household';
 const categories = new Set(['produce', 'dairy', 'bakery', 'pantry', 'home', 'other']);
 const pathname = 'zakupy/lista-v1.json';
@@ -48,7 +49,8 @@ async function readList() {
       id, name, quantity, checkedAt: null, profile: null,
     })),
   } : null);
-  const state = { ...data, currentRound, pastRounds: data.pastRounds ?? [], catalog: data.catalog ?? [] };
+  const profileNames = { ...defaultProfileNames, ...data.profileNames };
+  const state = { ...data, currentRound, pastRounds: data.pastRounds ?? [], catalog: data.catalog ?? [], profileNames };
   return { state, etag: result?.blob.etag ?? null };
 }
 
@@ -128,6 +130,7 @@ function listData(profile, state) {
     startedAt: state.currentRound?.startedAt ?? null,
     lastAddedAt: state.currentRound?.lastAddedAt ?? null,
     catalog: state.catalog,
+    profileNames: state.profileNames,
   };
 }
 
@@ -177,8 +180,8 @@ export default {
     try {
       if (request.method === 'GET') {
         if (!profile) return reject('Zaloguj się, aby otworzyć listę.', 401);
-        if (profile === awaitingProfile) return reply({ profile: null });
         const { state } = await readList();
+        if (profile === awaitingProfile) return reply({ profile: null, profileNames: state.profileNames });
         if (new URL(request.url).searchParams.has('history')) {
           const rounds = state.pastRounds.slice().reverse();
           if (state.currentRound?.bought.length) rounds.unshift(state.currentRound);
@@ -210,18 +213,31 @@ export default {
         const valid = typeof input.password === 'string' &&
           timingSafeEqual(digest(input.password), passwordHash);
         if (!valid) return reject('Nieprawidłowe hasło.', 401);
-        return reply({ profile: null }, 200, { 'Set-Cookie': sessionCookie(awaitingProfile, passwordHash) });
+        const { state } = await readList();
+        return reply({ profile: null, profileNames: state.profileNames }, 200, {
+          'Set-Cookie': sessionCookie(awaitingProfile, passwordHash),
+        });
       }
       if (input.action === 'logout') return reply({}, 200, { 'Set-Cookie': sessionCookie(null) });
       if (!profile) return reject('Zaloguj się ponownie.', 401);
       if (input.action === 'select-profile') {
-        if (!profiles.has(input.profile)) return reject('Wybierz Michała lub Olę.', 400);
+        if (!profiles.has(input.profile)) return reject('Wybierz jeden z dostępnych profili.', 400);
         const { state } = await readList();
         return reply(listData(input.profile, state), 200, {
           'Set-Cookie': sessionCookie(input.profile, passwordHash),
         });
       }
       if (profile === awaitingProfile) return reject('Wybierz profil, aby otworzyć listę.', 403);
+
+      if (input.action === 'rename-profile') {
+        const name = typeof input.name === 'string' ? input.name.trim().replace(/\s+/g, ' ').normalize('NFC') : '';
+        if (!name || name.length > 32 || /\p{Cc}/u.test(name)) return reject('Wpisz nazwę od 1 do 32 znaków.', 400);
+        const state = await updateList((current) => {
+          if (current.profileNames[profile] === name) return current;
+          return { ...current, profileNames: { ...current.profileNames, [profile]: name } };
+        });
+        return reply(listData(profile, state));
+      }
 
       if (input.action === 'save-product') {
         const product = productDetails(input);

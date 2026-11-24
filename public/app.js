@@ -9,7 +9,10 @@ const history = get('history');
 const password = get('password');
 const showPassword = get('show-password');
 
-const profiles = { michal: 'Michał', ola: 'Ola' };
+const defaultProfileNames = { michal: 'Michał', ola: 'Ola' };
+let profiles = defaultProfileNames;
+const profileDialog = get('profile-dialog');
+const profileNameInput = get('profile-name-input');
 const categories = {
   produce: 'Warzywa i owoce',
   dairy: 'Nabiał i jaja',
@@ -116,12 +119,14 @@ function setSync(status) {
 }
 
 function useAvatar(element, id) {
-  element.textContent = profiles[id][0];
+  element.textContent = Array.from(profiles[id])[0].toLocaleUpperCase('pl');
   element.classList.toggle('ola', id === 'ola');
 }
 
-function showLogin(message = '', chooseProfile = false) {
+function showLogin(message = '', chooseProfile = false, profileNames = defaultProfileNames) {
   profile = null;
+  profiles = profileNames;
+  if (profileDialog.open) profileDialog.close();
   items = [];
   suggestions = [];
   customProducts = [];
@@ -137,6 +142,13 @@ function showLogin(message = '', chooseProfile = false) {
   get('login').hidden = false;
   loginForm.hidden = chooseProfile;
   get('choose-profile').hidden = !chooseProfile;
+  if (chooseProfile) {
+    for (const button of get('profiles').querySelectorAll('[data-profile]')) {
+      const id = button.dataset.profile;
+      button.querySelector('.profile-name').textContent = profiles[id];
+      useAvatar(button.querySelector('.avatar'), id);
+    }
+  }
   errorAt('profile-error');
   errorAt('login-error', message);
 }
@@ -144,12 +156,17 @@ function showLogin(message = '', chooseProfile = false) {
 function showList(data) {
   const firstView = !profile;
   profile = data.profile;
+  const names = data.profileNames ?? defaultProfileNames;
+  const namesChanged = Object.keys(defaultProfileNames).some((id) => profiles[id] !== names[id]);
+  profiles = names;
   if (firstView) showShoppingTab(tabs[0]);
   get('loading').hidden = true;
   get('login').hidden = true;
   get('account').hidden = false;
   get('shopping').hidden = false;
   get('account-name').textContent = profiles[profile];
+  get('edit-profile').setAttribute('aria-label', profiles[profile] + ', zmień nazwę profilu');
+  get('edit-profile').title = 'Zmień nazwę profilu';
   useAvatar(get('account-avatar'), profile);
   const listDate = get('list-date');
   listDate.hidden = !data.startedAt;
@@ -157,11 +174,12 @@ function showList(data) {
   const lastAdded = get('last-added');
   lastAdded.hidden = !data.lastAddedAt;
   lastAdded.textContent = data.lastAddedAt ? 'Ostatnio dodano ' + dateTime.format(new Date(data.lastAddedAt)) : '';
-  if (firstView || JSON.stringify(items) !== JSON.stringify(data.items)) {
+  const itemsChanged = firstView || JSON.stringify(items) !== JSON.stringify(data.items);
+  if (itemsChanged) {
     items = data.items;
-    renderList();
     renderRecipes();
   }
+  if (itemsChanged || namesChanged) renderList();
   const nextSuggestions = data.suggestions ?? [];
   if (firstView || JSON.stringify(suggestions) !== JSON.stringify(nextSuggestions)) {
     suggestions = nextSuggestions;
@@ -364,7 +382,7 @@ async function refresh() {
       setSync('saved');
       refreshHistory();
     } else {
-      showLogin('', true);
+      showLogin('', true, data.profileNames);
     }
   } catch (error) {
     if (version !== revision) return;
@@ -376,7 +394,7 @@ async function refresh() {
   }
 }
 
-async function change(action, announcement) {
+async function change(action, announcement, errorId = 'list-error') {
   if (busy) return false;
   busy = true;
   revision += 1;
@@ -384,7 +402,7 @@ async function change(action, announcement) {
   get('save-product').disabled = true;
   get('shopping').setAttribute('aria-busy', 'true');
   setSync('saving');
-  errorAt('list-error');
+  errorAt(errorId);
   try {
     const data = await request(action);
     showList(data);
@@ -394,7 +412,7 @@ async function change(action, announcement) {
     return true;
   } catch (error) {
     if (error.status === 401) showLogin('Sesja wygasła. Zaloguj się ponownie.');
-    else errorAt('list-error', error.message || 'Nie udało się zapisać zmiany.');
+    else errorAt(errorId, error.message || 'Nie udało się zapisać zmiany.');
     setSync('offline');
     return false;
   } finally {
@@ -421,12 +439,12 @@ loginForm.addEventListener('submit', async (event) => {
   get('sign-in').disabled = true;
   errorAt('login-error');
   try {
-    await request({ action: 'login', password: data.get('password') });
+    const account = await request({ action: 'login', password: data.get('password') });
     password.value = '';
     password.type = 'password';
     showPassword.textContent = 'Pokaż';
     showPassword.setAttribute('aria-pressed', 'false');
-    showLogin('', true);
+    showLogin('', true, account.profileNames);
     get('profile-title').focus();
   } catch (error) {
     errorAt('login-error', error.message || 'Nie udało się zalogować.');
@@ -473,6 +491,36 @@ async function logout() {
 }
 get('logout').addEventListener('click', logout);
 get('profile-logout').addEventListener('click', logout);
+
+get('edit-profile').addEventListener('click', () => {
+  if (!profile || busy) return;
+  profileNameInput.value = profiles[profile];
+  errorAt('rename-error');
+  profileDialog.showModal();
+  profileNameInput.select();
+});
+
+get('cancel-rename').addEventListener('click', () => profileDialog.close());
+
+get('edit-profile-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (busy) return;
+  const name = profileNameInput.value.trim();
+  if (!name) {
+    errorAt('rename-error', 'Wpisz nazwę profilu.');
+    profileNameInput.focus();
+    return;
+  }
+  const save = get('save-name');
+  save.disabled = true;
+  try {
+    if (await change({ action: 'rename-profile', name }, 'Zapisano nazwę profilu.', 'rename-error')) {
+      profileDialog.close();
+    }
+  } finally {
+    save.disabled = false;
+  }
+});
 
 addForm.addEventListener('submit', async (event) => {
   event.preventDefault();

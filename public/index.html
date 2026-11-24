@@ -18,8 +18,11 @@
         Nasze zakupy
       </a>
       <div id="account" class="account" hidden>
-        <span id="account-avatar" class="avatar"></span>
-        <span id="account-name"></span>
+        <button id="edit-profile" class="text-button account-profile" type="button" aria-haspopup="dialog">
+          <span id="account-avatar" class="avatar" aria-hidden="true"></span>
+          <span id="account-name"></span>
+          <span class="edit-icon" aria-hidden="true">✎</span>
+        </button>
         <button id="logout" class="text-button" type="button">Wyloguj</button>
       </div>
     </div>
@@ -45,10 +48,10 @@
         <h2 id="profile-title" tabindex="-1">Kto robi zakupy?</h2>
         <div id="profiles" class="profiles">
           <button class="profile" type="button" data-profile="michal">
-            <span class="avatar" aria-hidden="true">M</span> Michał
+            <span class="avatar" aria-hidden="true">M</span><span class="profile-name">Michał</span>
           </button>
           <button class="profile" type="button" data-profile="ola">
-            <span class="avatar ola" aria-hidden="true">O</span> Ola
+            <span class="avatar ola" aria-hidden="true">O</span><span class="profile-name">Ola</span>
           </button>
         </div>
         <button id="profile-logout" class="text-button" type="button">Wróć do logowania</button>
@@ -147,6 +150,19 @@
       </section>
     </section>
   </main>
+
+  <dialog id="profile-dialog" aria-labelledby="edit-profile-title">
+    <form id="edit-profile-form">
+      <h2 id="edit-profile-title">Zmień nazwę profilu</h2>
+      <label for="profile-name-input">Nazwa</label>
+      <input id="profile-name-input" required maxlength="32" autocomplete="off">
+      <p id="rename-error" class="error" role="alert" hidden></p>
+      <div class="profile-actions">
+        <button id="cancel-rename" class="text-button" type="button">Anuluj</button>
+        <button id="save-name" class="primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </dialog>
 
   <template id="item-template">
     <li class="item">

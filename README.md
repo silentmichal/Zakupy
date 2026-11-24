@@ -8,6 +8,8 @@ Data utworzenia listy jest zapisywana po dodaniu pierwszego produktu do pustej l
 
 Nad bieżącą listą widać datę i godzinę ostatniego dodania, a przy nowych produktach ich własny czas dodania. Odhaczanie i usuwanie pozycji z bieżącej listy nie zmienia czasu ostatniego dodania.
 
+Wybierz swoją nazwę w górnym pasku, aby zmienić nazwę profilu. Zmianę widać na obu urządzeniach i w historii zakupów.
+
 ## Wdrożenie w Vercel
 
 1. Zaimportuj repozytorium w Vercel.
