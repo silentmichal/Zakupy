@@ -104,8 +104,10 @@ function applyListChange(state, change) {
   const items = change(state.items);
   if (items === state.items) return state;
   const { currentRound, pastRounds } = state;
-  if (items.length && !state.items.length) {
-    return { ...state, items, currentRound: { startedAt: new Date().toISOString(), bought: [] } };
+  if (items.length > state.items.length) {
+    const addedAt = items.at(-1).addedAt;
+    const round = currentRound ?? { startedAt: addedAt, bought: [] };
+    return { ...state, items, currentRound: { ...round, lastAddedAt: addedAt } };
   }
   if (!items.length && currentRound) {
     const round = { ...currentRound, closedAt: new Date().toISOString() };
@@ -123,7 +125,9 @@ function listData(profile, state) {
     .map(([, { name, category }]) => ({ name, category }));
   return {
     profile, items: state.items, suggestions,
-    startedAt: state.currentRound?.startedAt ?? null, catalog: state.catalog,
+    startedAt: state.currentRound?.startedAt ?? null,
+    lastAddedAt: state.currentRound?.lastAddedAt ?? null,
+    catalog: state.catalog,
   };
 }
 
@@ -157,7 +161,7 @@ function itemChange(input, profile) {
     if (items.some((existing) => existing.id === id)) return items;
     if (input.suggested === true && items.some((existing) => !existing.done && productKey(existing.name) === productKey(item.name))) return items;
     if (items.length >= 300) throw new RangeError('Lista ma już 300 pozycji. Usuń kilka produktów i spróbuj ponownie.');
-    return [...items, item];
+    return [...items, { ...item, addedAt: new Date().toISOString() }];
   };
 }
 

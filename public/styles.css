@@ -135,6 +135,7 @@ progress::-moz-progress-bar { background: var(--orange); border-radius: 999px; }
 .item-copy { display: flex; gap: 3px 10px; align-items: baseline; flex-wrap: wrap; padding: 6px 0; overflow-wrap: anywhere; }
 .item-name { font-weight: 540; }
 .item-quantity { color: var(--muted); font-size: .9rem; }
+.item-added { flex-basis: 100%; color: var(--muted); font-size: .82rem; }
 .is-done .item-name { color: var(--muted); text-decoration: line-through; }
 .remove { width: 42px; flex: none; padding: 0; color: var(--muted); font-size: 1.37rem; line-height: 1; }
 .empty { padding: 24px 18px; color: var(--muted); }

@@ -6,6 +6,8 @@ Po dwóch odhaczeniach tego samego produktu aplikacja może podpowiedzieć go w 
 
 Data utworzenia listy jest zapisywana po dodaniu pierwszego produktu do pustej listy. Historia pokazuje kupione produkty, profil osoby odhaczającej i czas odhaczenia. Gdy lista zostanie opróżniona, bieżący wpis trafia do historii z datą zakończenia. Daty wcześniejszych list pozostają nieznane.
 
+Nad bieżącą listą widać datę i godzinę ostatniego dodania, a przy nowych produktach ich własny czas dodania. Odhaczanie i usuwanie pozycji z bieżącej listy nie zmienia czasu ostatniego dodania.
+
 ## Wdrożenie w Vercel
 
 1. Zaimportuj repozytorium w Vercel.

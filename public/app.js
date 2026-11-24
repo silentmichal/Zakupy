@@ -156,6 +156,11 @@ function showList(data) {
   listDate.textContent = data.startedAt
     ? 'Utworzona ' + dateTime.format(new Date(data.startedAt))
     : 'Data utworzenia niedostępna';
+  const lastAdded = get('last-added');
+  lastAdded.hidden = data.items.length === 0;
+  lastAdded.textContent = data.lastAddedAt
+    ? 'Ostatni produkt dodano ' + dateTime.format(new Date(data.lastAddedAt))
+    : 'Czas ostatniego dodania niedostępny';
   if (firstView || JSON.stringify(items) !== JSON.stringify(data.items)) {
     items = data.items;
     renderList();
@@ -281,6 +286,12 @@ function renderItem(item) {
   const quantity = entry.querySelector('.item-quantity');
   quantity.textContent = item.quantity;
   quantity.hidden = !item.quantity;
+  const added = entry.querySelector('.item-added');
+  if (item.addedAt) {
+    added.dateTime = item.addedAt;
+    added.textContent = 'Dodano ' + dateTime.format(new Date(item.addedAt));
+    added.hidden = false;
+  }
   const check = entry.querySelector('.check');
   check.checked = item.done;
   check.setAttribute('aria-label', (item.done ? 'Przywróć: ' : 'Odhacz: ') + item.name);
