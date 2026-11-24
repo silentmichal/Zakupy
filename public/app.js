@@ -152,15 +152,11 @@ function showList(data) {
   get('account-name').textContent = profiles[profile];
   useAvatar(get('account-avatar'), profile);
   const listDate = get('list-date');
-  listDate.hidden = data.items.length === 0;
-  listDate.textContent = data.startedAt
-    ? 'Utworzona ' + dateTime.format(new Date(data.startedAt))
-    : 'Data utworzenia niedostępna';
+  listDate.hidden = !data.startedAt;
+  listDate.textContent = data.startedAt ? 'Utworzona ' + dateTime.format(new Date(data.startedAt)) : '';
   const lastAdded = get('last-added');
-  lastAdded.hidden = data.items.length === 0;
-  lastAdded.textContent = data.lastAddedAt
-    ? 'Ostatni produkt dodano ' + dateTime.format(new Date(data.lastAddedAt))
-    : 'Czas ostatniego dodania niedostępny';
+  lastAdded.hidden = !data.lastAddedAt;
+  lastAdded.textContent = data.lastAddedAt ? 'Ostatnio dodano ' + dateTime.format(new Date(data.lastAddedAt)) : '';
   if (firstView || JSON.stringify(items) !== JSON.stringify(data.items)) {
     items = data.items;
     renderList();
@@ -322,15 +318,15 @@ function renderList() {
   for (const [key, label] of Object.entries(categories)) {
     const group = pending.filter((item) => item.category === key);
     if (!group.length) continue;
-    const card = document.createElement('section');
-    card.className = 'category';
+    const category = document.createElement('section');
+    category.className = 'category';
     const heading = document.createElement('h3');
     heading.textContent = label;
     const list = document.createElement('ul');
     list.className = 'items';
     list.append(...group.map(renderItem));
-    card.append(heading, list);
-    todo.append(card);
+    category.append(heading, list);
+    todo.append(category);
   }
 
   if (!pending.length) {
@@ -345,12 +341,10 @@ function renderList() {
   get('list-actions').hidden = !items.length;
   get('todo-count').textContent = pending.length;
   get('done-count').textContent = completed.length;
+  get('list-progress').hidden = !items.length;
   get('progress-copy').textContent = completed.length + ' z ' + items.length + ' kupionych';
   get('progress').max = items.length || 1;
   get('progress').value = completed.length;
-  get('summary-copy').textContent = pending.length
-    ? 'Sprawdź, co zostało do kupienia.'
-    : items.length ? 'Możecie już wracać do domu.' : 'Wspólna lista Michała i Oli.';
 
   if (focusedRow) {
     const sameRow = [...document.querySelectorAll('.item')].find((row) => row.dataset.id === focusedRow.dataset.id);

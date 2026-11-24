@@ -60,11 +60,12 @@
       <div class="summary">
         <div>
           <h1 id="shopping-title" tabindex="-1">Lista zakupów<span>.</span></h1>
-          <p id="summary-copy"></p>
-          <p id="list-date" class="list-date" hidden></p>
-          <p id="last-added" class="list-date" hidden></p>
+          <div class="list-dates">
+            <p id="last-added" hidden></p>
+            <p id="list-date" hidden></p>
+          </div>
         </div>
-        <div class="progress" aria-label="Postęp zakupów">
+        <div id="list-progress" class="progress" aria-label="Postęp zakupów" hidden>
           <span id="progress-copy"></span>
           <progress id="progress" aria-label="Kupione produkty" value="0" max="1"></progress>
         </div>
@@ -72,7 +73,7 @@
 
       <div class="shopping-tabs" role="tablist" aria-label="Zakupy">
         <button id="list-tab" type="button" role="tab" aria-selected="true" aria-controls="list-panel">Lista</button>
-        <button id="products-tab" type="button" role="tab" aria-selected="false" aria-controls="products-panel" tabindex="-1">Produkty</button>
+        <button id="products-tab" type="button" role="tab" aria-selected="false" aria-controls="products-panel" tabindex="-1">Produkty <span aria-hidden="true">+</span></button>
       </div>
 
       <p id="list-error" class="error" role="alert" hidden></p>
@@ -101,42 +102,48 @@
               <option value="home">Do domu</option>
             </select>
           </label>
-          <button class="primary" id="add" type="submit"><span aria-hidden="true">+</span> Dodaj do listy</button>
-          <button class="text-button" id="save-product" type="submit">Zapisz w katalogu</button>
+          <div class="product-actions">
+            <button class="primary" id="add" type="submit"><span aria-hidden="true">+</span> Dodaj do listy</button>
+            <button class="text-button" id="save-product" type="submit">Zapisz w katalogu</button>
+          </div>
         </form>
         <p id="product-feedback" class="product-feedback" hidden></p>
       </section>
 
-      <section id="list-panel" role="tabpanel" aria-labelledby="list-tab">
-        <section id="frequent" class="suggestions" aria-labelledby="frequent-title" hidden>
-          <h2 id="frequent-title">Często kupujecie</h2>
-          <div id="frequent-products" class="suggestion-options"></div>
-        </section>
-
-        <div class="section-heading">
-          <h2>Do kupienia <span id="todo-count" class="count"></span></h2>
-          <span id="sync-state" class="sync" role="status"><i></i> Zsynchronizowano</span>
-        </div>
-        <div id="todo"></div>
-
-        <div id="done-section" class="done-section" hidden>
+      <section id="list-panel" class="list-layout" role="tabpanel" aria-labelledby="list-tab">
+        <div class="list-sheet">
           <div class="section-heading">
-            <h2>Kupione <span id="done-count" class="count"></span></h2>
-            <button id="clear" class="text-button" type="button">Wyczyść kupione</button>
+            <h2>Do kupienia <span id="todo-count" class="count"></span></h2>
+            <span id="sync-state" class="sync" role="status"><i></i> Zsynchronizowano</span>
           </div>
-          <ul id="done" class="items"></ul>
+          <div id="todo"></div>
+
+          <div id="done-section" class="done-section" hidden>
+            <div class="section-heading">
+              <h2>Kupione <span id="done-count" class="count"></span></h2>
+              <button id="clear" class="text-button" type="button">Wyczyść kupione</button>
+            </div>
+            <ul id="done" class="items"></ul>
+          </div>
+          <div id="list-actions" class="list-actions" hidden>
+            <button id="clear-all" class="text-button" type="button">Wyczyść całą listę</button>
+          </div>
         </div>
-        <div id="list-actions" class="list-actions" hidden>
-          <button id="clear-all" class="text-button" type="button">Wyczyść całą listę</button>
-        </div>
-        <section id="recipe-suggestions" class="suggestions" aria-labelledby="recipe-title" hidden>
-          <h2 id="recipe-title">Przepisy z Cookidoo</h2>
-          <ul id="recipe-links" class="recipe-links"></ul>
-        </section>
-        <details id="history" class="suggestions history">
-          <summary>Historia zakupów</summary>
-          <div id="history-content"></div>
-        </details>
+
+        <aside class="list-extras" aria-label="Podpowiedzi i historia">
+          <section id="frequent" class="extra" aria-labelledby="frequent-title" hidden>
+            <h2 id="frequent-title">Często kupujecie</h2>
+            <div id="frequent-products" class="suggestion-options"></div>
+          </section>
+          <details id="recipe-suggestions" class="extra" hidden>
+            <summary>Przepisy z Cookidoo</summary>
+            <ul id="recipe-links" class="recipe-links"></ul>
+          </details>
+          <details id="history" class="extra">
+            <summary>Historia zakupów</summary>
+            <div id="history-content"></div>
+          </details>
+        </aside>
       </section>
     </section>
   </main>
