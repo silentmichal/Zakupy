@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#efecea">
+  <meta name="description" content="Wspólna lista zakupów">
+  <link rel="icon" href="/koszyk.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+  <title>Nasze zakupy</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="Nasze zakupy, strona główna">
+        <img src="/koszyk.svg" alt="" width="39" height="39">
+        Nasze zakupy
+      </a>
+      <div id="account" class="account" hidden>
+        <span id="account-avatar" class="avatar"></span>
+        <span id="account-name"></span>
+        <button id="logout" class="text-button" type="button">Wyloguj</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="loading" class="loading" role="status">Otwieram listę…</section>
+    <section id="login" class="login" aria-labelledby="login-title" hidden>
+      <div class="login-visual">
+        <h1 id="login-title" tabindex="-1">Nasze<br>zakupy<span>.</span></h1>
+        <p>Jedna lista, zawsze pod ręką.</p>
+      </div>
+      <form id="login-form" class="login-form">
+        <fieldset>
+          <legend>Kto robi zakupy?</legend>
+          <div class="profiles">
+            <label class="profile">
+              <input type="radio" name="profile" value="michal" checked>
+              <span class="avatar michal" aria-hidden="true">M</span><span>Michał</span>
+            </label>
+            <label class="profile">
+              <input type="radio" name="profile" value="ola">
+              <span class="avatar ola" aria-hidden="true">O</span><span>Ola</span>
+            </label>
+          </div>
+        </fieldset>
+        <label for="password">Hasło</label>
+        <div class="password-wrap">
+          <input id="password" name="password" type="password" autocomplete="current-password" maxlength="256" required>
+          <button id="show-password" type="button" class="text-button" aria-controls="password" aria-pressed="false">Pokaż</button>
+        </div>
+        <button id="sign-in" class="primary" type="submit">Otwórz listę <span aria-hidden="true">→</span></button>
+        <p id="login-error" class="error" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <section id="shopping" class="shopping" aria-labelledby="shopping-title" hidden>
+      <div class="summary">
+        <div>
+          <h1 id="shopping-title" tabindex="-1">Lista zakupów<span>.</span></h1>
+          <p id="summary-copy"></p>
+        </div>
+        <div class="progress" aria-label="Postęp zakupów">
+          <span id="progress-copy"></span>
+          <progress id="progress" aria-label="Kupione produkty" value="0" max="1"></progress>
+        </div>
+      </div>
+
+      <form id="add-form" class="add-form" aria-label="Dodaj produkt">
+        <label class="product-field">Produkt
+          <input id="item-name" name="name" type="text" placeholder="np. Mleko" autocomplete="off" maxlength="100" required>
+        </label>
+        <label>Ilość
+          <input id="quantity" name="quantity" type="text" placeholder="np. 2 l" autocomplete="off" maxlength="32">
+        </label>
+        <label>Kategoria
+          <select id="category" name="category">
+            <option value="other">Inne</option>
+            <option value="produce">Warzywa i owoce</option>
+            <option value="dairy">Nabiał i jaja</option>
+            <option value="bakery">Pieczywo</option>
+            <option value="pantry">Spożywcze</option>
+            <option value="home">Do domu</option>
+          </select>
+        </label>
+        <button class="primary" id="add" type="submit"><span aria-hidden="true">+</span> Dodaj</button>
+      </form>
+
+      <p id="list-error" class="error" role="alert" hidden></p>
+      <p id="announcement" class="sr-only" role="status"></p>
+
+      <div class="section-heading">
+        <h2>Do kupienia <span id="todo-count" class="count"></span></h2>
+        <span id="sync-state" class="sync" role="status"><i></i> Zsynchronizowano</span>
+      </div>
+      <div id="todo"></div>
+
+      <div id="done-section" class="done-section" hidden>
+        <div class="section-heading">
+          <h2>Kupione <span id="done-count" class="count"></span></h2>
+          <button id="clear" class="text-button" type="button">Wyczyść kupione</button>
+        </div>
+        <ul id="done" class="items"></ul>
+      </div>
+    </section>
+  </main>
+
+  <template id="item-template">
+    <li class="item">
+      <label class="item-label">
+        <input class="check" type="checkbox">
+        <span class="item-copy">
+          <span class="item-name"></span>
+          <span class="item-quantity"></span>
+        </span>
+      </label>
+      <span class="avatar author" aria-hidden="true"></span>
+      <button type="button" class="remove"><span aria-hidden="true">×</span></button>
+    </li>
+  </template>
+</body>
+</html>
