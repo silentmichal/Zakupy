@@ -57,14 +57,12 @@ main { max-width: 1104px; padding: 0 32px 64px; margin: auto; }
 }
 .login-visual p { color: #514640; }
 .login-form { padding: 42px 34px; align-self: center; }
-.login-form fieldset { border: 0; padding: 0; margin: 0 0 24px; min-width: 0; }
-.login-form legend { font: 400 2.03rem/1.1 var(--display); letter-spacing: -.06em; padding: 0; margin-bottom: 17px; }
+.login-form h2 { margin-bottom: 17px; }
 .login-form > label, .add-form label { display: block; font-size: .9rem; font-weight: 550; }
 .profiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.profile { display: flex; position: relative; align-items: center; gap: 8px; min-height: 51px; padding: 7px 10px; border-radius: 999px; border: 1px solid var(--stone); cursor: pointer; }
-.profile:has(:checked) { background: var(--wash); border-color: #d4521c; }
-.profile:focus-within { outline: 2px solid #a3431f; outline-offset: 2px; }
-.profile input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.profile { display: flex; align-items: center; gap: 8px; min-height: 51px; padding: 7px 10px; border-radius: 999px; border: 1px solid var(--stone); background: var(--paper); }
+.profile:hover { background: var(--wash); border-color: #d4521c; }
+#profile-logout { margin-top: 10px; }
 .avatar { display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; background: #f0e9e2; border-radius: 50%; color: var(--ink); font-size: .75rem; font-weight: 650; }
 .avatar.ola { background: #fce5d9; color: #78300f; }
 .password-wrap { position: relative; margin: 7px 0 16px; }
@@ -93,6 +91,9 @@ progress::-webkit-progress-value { background: var(--orange); border-radius: 999
 progress::-moz-progress-bar { background: var(--orange); border-radius: 999px; }
 .add-form { display: grid; grid-template-columns: minmax(170px, 2fr) minmax(88px, .7fr) minmax(150px, 1fr) auto; align-items: end; gap: 12px; padding: 20px; border: 1px solid var(--stone); border-radius: 12px; background: var(--paper); box-shadow: var(--shadow); }
 .add-form input, .add-form select { display: block; margin-top: 5px; }
+.catalog-field { grid-column: 1 / -1; }
+.list-actions { display: flex; justify-content: flex-end; padding-top: 18px; }
+.list-actions .text-button { color: #812e10; border-color: #d3b1a0; }
 .section-heading { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin: 34px 0 13px; }
 .section-heading h2 { display: flex; align-items: center; gap: 9px; }
 .count { display: inline-grid; place-items: center; min-width: 26px; border-radius: 999px; padding: 4px 7px; border: 1px solid var(--stone); font: 550 .8rem/1.2 system-ui, sans-serif; letter-spacing: 0; }

@@ -1,6 +1,6 @@
 # Nasze zakupy
 
-Wspólna lista zakupów Michała i Oli. Wybierz profil, wpisz wspólne hasło, a następnie dodawaj i odhaczaj produkty. Oba profile korzystają z tej samej listy. Aplikacja synchronizuje widok po zapisie, po powrocie do karty i co 12 sekund, gdy karta jest widoczna.
+Wspólna lista zakupów Michała i Oli. Wpisz wspólne hasło, a następnie wybierz profil. Produkt możesz wpisać ręcznie lub wybrać z katalogu. Przycisk „Wyczyść całą listę” usuwa pozycje widoczne w chwili kliknięcia, również te odhaczone. Oba profile korzystają z tej samej listy. Aplikacja synchronizuje widok po zapisie, po powrocie do karty i co 12 sekund, gdy karta jest widoczna.
 
 ## Wdrożenie w Vercel
 

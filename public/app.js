@@ -1,6 +1,8 @@
 const get = (id) => document.getElementById(id);
 const loginForm = get('login-form');
 const addForm = get('add-form');
+const catalog = get('catalog');
+const nameInput = get('item-name');
 const password = get('password');
 const showPassword = get('show-password');
 
@@ -13,6 +15,34 @@ const categories = {
   home: 'Do domu',
   other: 'Inne',
 };
+const commonProducts = {
+  produce: ['Banany', 'Cebula', 'Cytryny', 'Jabłka', 'Marchew', 'Ogórki', 'Papryka', 'Pomidory', 'Sałata', 'Ziemniaki'],
+  dairy: ['Jajka', 'Jogurt', 'Masło', 'Mleko', 'Ser żółty', 'Śmietana', 'Twaróg'],
+  bakery: ['Bułki', 'Chleb', 'Chleb tostowy', 'Tortille'],
+  pantry: ['Herbata', 'Kawa', 'Kurczak', 'Makaron', 'Mąka', 'Mięso mielone', 'Olej', 'Płatki owsiane', 'Pomidory w puszce', 'Ryż', 'Sól'],
+  home: ['Mydło', 'Papier toaletowy', 'Płyn do naczyń', 'Ręczniki papierowe', 'Tabletki do zmywarki', 'Worki na śmieci'],
+};
+
+for (const [category, names] of Object.entries(commonProducts)) {
+  const group = document.createElement('optgroup');
+  group.label = categories[category];
+  for (const name of names) {
+    const option = new Option(name, name);
+    option.dataset.category = category;
+    group.append(option);
+  }
+  catalog.append(group);
+}
+
+catalog.addEventListener('change', () => {
+  const option = catalog.selectedOptions[0];
+  if (!option.value) return;
+  nameInput.value = option.value;
+  get('category').value = option.dataset.category;
+});
+nameInput.addEventListener('input', () => {
+  if (nameInput.value !== catalog.value) catalog.value = '';
+});
 
 let profile = null;
 let items = [];
@@ -49,7 +79,7 @@ function useAvatar(element, id) {
   element.classList.toggle('ola', id === 'ola');
 }
 
-function showLogin(message = '') {
+function showLogin(message = '', chooseProfile = false) {
   profile = null;
   items = [];
   get('loading').hidden = true;
@@ -58,6 +88,9 @@ function showLogin(message = '') {
   get('todo').replaceChildren();
   get('done').replaceChildren();
   get('login').hidden = false;
+  loginForm.hidden = chooseProfile;
+  get('choose-profile').hidden = !chooseProfile;
+  errorAt('profile-error');
   errorAt('login-error', message);
 }
 
@@ -134,6 +167,7 @@ function renderList() {
 
   get('done').replaceChildren(...completed.map(renderItem));
   get('done-section').hidden = !completed.length;
+  get('list-actions').hidden = !items.length;
   get('todo-count').textContent = pending.length;
   get('done-count').textContent = completed.length;
   get('progress-copy').textContent = completed.length + ' z ' + items.length + ' kupionych';
@@ -156,8 +190,12 @@ async function refresh() {
   try {
     const data = await request();
     if (version !== revision) return;
-    showList(data);
-    setSync('saved');
+    if (data.profile) {
+      showList(data);
+      setSync('saved');
+    } else {
+      showLogin('', true);
+    }
   } catch (error) {
     if (version !== revision) return;
     if (error.status === 401) showLogin();
@@ -210,13 +248,13 @@ loginForm.addEventListener('submit', async (event) => {
   get('sign-in').disabled = true;
   errorAt('login-error');
   try {
-    showList(await request({ action: 'login', profile: data.get('profile'), password: data.get('password') }));
-    setSync('saved');
+    await request({ action: 'login', password: data.get('password') });
     password.value = '';
     password.type = 'password';
     showPassword.textContent = 'Pokaż';
     showPassword.setAttribute('aria-pressed', 'false');
-    get('shopping-title').focus();
+    showLogin('', true);
+    get('profile-title').focus();
   } catch (error) {
     errorAt('login-error', error.message || 'Nie udało się zalogować.');
   } finally {
@@ -225,7 +263,27 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-get('logout').addEventListener('click', async () => {
+get('profiles').addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-profile]');
+  if (!button || busy) return;
+  busy = true;
+  revision += 1;
+  button.disabled = true;
+  errorAt('profile-error');
+  try {
+    showList(await request({ action: 'select-profile', profile: button.dataset.profile }));
+    setSync('saved');
+    get('shopping-title').focus();
+  } catch (error) {
+    if (error.status === 401) showLogin('Sesja wygasła. Zaloguj się ponownie.');
+    else errorAt('profile-error', error.message || 'Nie udało się otworzyć listy.');
+  } finally {
+    busy = false;
+    button.disabled = false;
+  }
+});
+
+async function logout() {
   if (busy) return;
   busy = true;
   revision += 1;
@@ -235,11 +293,13 @@ get('logout').addEventListener('click', async () => {
     showLogin();
     get('login-title').focus();
   } catch (error) {
-    errorAt('list-error', error.message || 'Nie udało się wylogować.');
+    errorAt(profile ? 'list-error' : 'profile-error', error.message || 'Nie udało się wylogować.');
   } finally {
     busy = false;
   }
-});
+}
+get('logout').addEventListener('click', logout);
+get('profile-logout').addEventListener('click', logout);
 
 addForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -255,7 +315,10 @@ addForm.addEventListener('submit', async (event) => {
     quantity: data.get('quantity'), category: data.get('category'),
   };
   if (await change(action, 'Produkt dodany.')) {
-    if (get('item-name').value === data.get('name')) get('item-name').value = '';
+    if (nameInput.value === data.get('name')) {
+      nameInput.value = '';
+      catalog.value = '';
+    }
     if (get('quantity').value === action.quantity) get('quantity').value = '';
     get('item-name').focus();
   }
@@ -264,6 +327,13 @@ addForm.addEventListener('submit', async (event) => {
 get('clear').addEventListener('click', () => {
   const ids = items.filter((item) => item.done).map((item) => item.id);
   if (confirm('Usunąć kupione produkty z listy?')) change({ action: 'clear', ids }, 'Usunięto kupione produkty.');
+});
+
+get('clear-all').addEventListener('click', async () => {
+  const ids = items.map((item) => item.id);
+  if (await change({ action: 'clear-all', ids }, 'Lista wyczyszczona.')) {
+    nameInput.focus({ preventScroll: true });
+  }
 });
 
 document.addEventListener('visibilitychange', () => { if (profile) refresh(); });

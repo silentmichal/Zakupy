@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { BlobError, BlobPreconditionFailedError, get, put } from '@vercel/blob';
 
 const profiles = new Set(['michal', 'ola']);
+const awaitingProfile = 'household';
 const categories = new Set(['produce', 'dairy', 'bakery', 'pantry', 'home', 'other']);
 const pathname = 'zakupy/lista-v1.json';
 const sessionMaxAge = 30 * 24 * 60 * 60;
@@ -13,7 +14,8 @@ const sign = (text, passwordHash) => createHmac('sha256', process.env.SESSION_SE
 function sessionProfile(request, passwordHash) {
   const token = request.headers.get('cookie')?.match(/(?:^|;\s*)zakupy_session=([^;]+)/)?.[1] ?? '';
   const [profile, expiry, signature] = token.split('.');
-  if (!profiles.has(profile) || !/^\d+$/.test(expiry) || Number(expiry) <= Date.now() || !signature) return null;
+  if ((!profiles.has(profile) && profile !== awaitingProfile) || !/^\d+$/.test(expiry) ||
+      Number(expiry) <= Date.now() || !signature) return null;
   const expected = Buffer.from(sign(profile + '.' + expiry, passwordHash));
   const received = Buffer.from(signature);
   return expected.length === received.length && timingSafeEqual(expected, received) ? profile : null;
@@ -65,10 +67,13 @@ async function updateList(change) {
 
 function itemChange(input, profile) {
   const { action, id } = input;
-  if (action === 'clear') {
+  if (action === 'clear' || action === 'clear-all') {
     if (!Array.isArray(input.ids) || input.ids.length > 300) return null;
-    const completed = new Set(input.ids);
-    return (items) => items.filter((item) => !item.done || !completed.has(item.id));
+    const selected = new Set(input.ids);
+    return (items) => {
+      const remaining = items.filter((item) => !selected.has(item.id) || (action === 'clear' && !item.done));
+      return remaining.length === items.length ? items : remaining;
+    };
   }
 
   if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id)) return null;
@@ -103,6 +108,7 @@ export default {
     try {
       if (request.method === 'GET') {
         if (!profile) return reject('Zaloguj się, aby otworzyć listę.', 401);
+        if (profile === awaitingProfile) return reply({ profile: null });
         return reply({ profile, items: (await readList()).items });
       }
       if (request.method !== 'POST') return reject('Ta metoda jest niedostępna.', 405);
@@ -128,12 +134,19 @@ export default {
       if (input.action === 'login') {
         const valid = typeof input.password === 'string' &&
           timingSafeEqual(digest(input.password), passwordHash);
-        if (!valid || !profiles.has(input.profile)) return reject('Nieprawidłowe hasło.', 401);
-        const { items } = await readList();
-        return reply({ profile: input.profile, items }, 200, { 'Set-Cookie': sessionCookie(input.profile, passwordHash) });
+        if (!valid) return reject('Nieprawidłowe hasło.', 401);
+        return reply({ profile: null }, 200, { 'Set-Cookie': sessionCookie(awaitingProfile, passwordHash) });
       }
       if (input.action === 'logout') return reply({}, 200, { 'Set-Cookie': sessionCookie(null) });
       if (!profile) return reject('Zaloguj się ponownie.', 401);
+      if (input.action === 'select-profile') {
+        if (!profiles.has(input.profile)) return reject('Wybierz Michała lub Olę.', 400);
+        const { items } = await readList();
+        return reply({ profile: input.profile, items }, 200, {
+          'Set-Cookie': sessionCookie(input.profile, passwordHash),
+        });
+      }
+      if (profile === awaitingProfile) return reject('Wybierz profil, aby otworzyć listę.', 403);
 
       const change = itemChange(input, profile);
       if (!change) return reject('Sprawdź dane produktu i spróbuj ponownie.', 400);
