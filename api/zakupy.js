@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { BlobError, BlobPreconditionFailedError, get, put } from '@vercel/blob';
+import { BlobError, BlobPreconditionFailedError, get, head, put } from '@vercel/blob';
 
 const defaultProfileNames = { michal: 'Michał', ola: 'Ola' };
 const profiles = new Set(Object.keys(defaultProfileNames));
@@ -40,7 +40,10 @@ function reject(message, status) {
 }
 
 async function readList() {
-  const result = await get(pathname, { access: 'private', useCache: false });
+  const result = await get(pathname, {
+    access: 'private', useCache: false, headers: { 'Accept-Encoding': 'identity' },
+  });
+  if (result && !result.blob.etag) throw new Error('Blob read returned no revision');
   const saved = result ? await new Response(result.stream).json() : [];
   const data = Array.isArray(saved) ? { items: saved, purchases: {} } : saved;
   const currentRound = data.currentRound ?? (data.items.length ? {
@@ -54,6 +57,14 @@ async function readList() {
   return { state, etag: result?.blob.etag ?? null };
 }
 
+async function writeTag(readTag) {
+  if (!readTag?.startsWith('W/')) return readTag;
+  const metadata = await head(pathname);
+  // If-Match needs a strong ETag. Verify the metadata still describes the body we read.
+  if (metadata.etag !== readTag.slice(2)) throw new BlobPreconditionFailedError();
+  return metadata.etag;
+}
+
 async function updateList(change) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const { state, etag } = await readList();
@@ -61,11 +72,12 @@ async function updateList(change) {
     if (next === state) return state;
 
     try {
+      const match = await writeTag(etag);
       await put(pathname, JSON.stringify(next), {
         access: 'private',
         contentType: 'application/json',
         addRandomSuffix: false,
-        ...(etag ? { ifMatch: etag, allowOverwrite: true } : { allowOverwrite: false }),
+        ...(match ? { ifMatch: match, allowOverwrite: true } : { allowOverwrite: false }),
       });
       return next;
     } catch (error) {
@@ -73,7 +85,7 @@ async function updateList(change) {
       await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
     }
   }
-  throw new Error('Concurrent changes prevented the update');
+  throw new BlobPreconditionFailedError();
 }
 
 function productKey(name) {
@@ -263,7 +275,10 @@ export default {
       return reply(listData(profile, state));
     } catch (error) {
       if (error instanceof RangeError) return reject(error.message, 400);
-      console.error('Shopping list request failed', error.name);
+      if (error instanceof BlobPreconditionFailedError) {
+        return reject('Lista zmieniła się w trakcie zapisu. Spróbuj ponownie.', 409);
+      }
+      console.error('Shopping list request failed', request.method, error.constructor.name);
       return reject('Nie udało się połączyć z listą. Spróbuj ponownie.', 503);
     }
   },

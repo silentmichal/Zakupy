@@ -114,7 +114,7 @@ function errorAt(id, message = '') {
 function setSync(status) {
   const target = get('sync-state');
   target.dataset.state = status;
-  const text = { saved: 'Zsynchronizowano', saving: 'Zapisywanie…', offline: 'Brak połączenia' };
+  const text = { saved: 'Zsynchronizowano', saving: 'Zapisywanie…', offline: 'Brak połączenia', conflict: 'Lista zmieniła się' };
   target.lastChild.textContent = ' ' + text[status];
 }
 
@@ -413,7 +413,7 @@ async function change(action, announcement, errorId = 'list-error') {
   } catch (error) {
     if (error.status === 401) showLogin('Sesja wygasła. Zaloguj się ponownie.');
     else errorAt(errorId, error.message || 'Nie udało się zapisać zmiany.');
-    setSync('offline');
+    setSync(error.status === 409 ? 'conflict' : 'offline');
     return false;
   } finally {
     busy = false;
